@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "nodemon server.js",
+    "start:prod": "cross-env NODE_ENV=production nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clear-db": "node ./dev-data/data/import-dev-data.js --delete",
     "fill-db": "node ./dev-data/data/import-dev-data.js --import",
