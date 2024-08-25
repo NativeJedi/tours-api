@@ -4,7 +4,6 @@ const bcrypt = require('bcryptjs');
 
 const { Schema } = mongoose;
 
-
 const userSchema = new Schema({
   name: {
     type: String,
@@ -23,6 +22,7 @@ const userSchema = new Schema({
   },
   photo: String,
   password: {
+    select: false,
     type: String,
     trim: true,
     required: [true, 'Please provide a password'],
@@ -30,6 +30,7 @@ const userSchema = new Schema({
     minLength: [8, 'Password name must be at least 8 characters'],
   },
   passwordConfirm: {
+    select: false,
     type: String,
     trim: true,
     required: [true, 'Please confirm your password'],
@@ -43,7 +44,12 @@ const userSchema = new Schema({
   },
 });
 
-userSchema.pre('save', async function(next) {
+userSchema.methods.isPasswordCorrect = async (
+  candidatePassword,
+  userPassword,
+) => await bcrypt.compare(candidatePassword, userPassword);
+
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
   this.password = await bcrypt.hash(this.password, 12);

@@ -10,7 +10,8 @@
     "clear-db": "node ./dev-data/data/import-dev-data.js --delete",
     "fill-db": "node ./dev-data/data/import-dev-data.js --import",
     "refresh-db": "npm run clear-db && npm run fill-db",
-    "debug": "ndb server.js"
+    "debug": "ndb server.js",
+    "lint:fix": "eslint --fix ./*.js"
   },
   "author": "Me",
   "license": "ISC",
@@ -25,7 +26,12 @@
     "validator": "^13.12.0"
   },
   "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
     "ndb": "^1.1.5",
-    "prettier": "^3.0.3"
+    "prettier": "^3.3.3"
   }
 }

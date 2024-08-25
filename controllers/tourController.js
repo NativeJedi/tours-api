@@ -1,6 +1,6 @@
-const Tour = require('../models/tourModel.js');
 const ApiFeatures = require('../utils/api-features');
 const { catchAsync, ApiError } = require('../utils/errors');
+const Tour = require('../models/tourModel');
 
 const aliasTopTours = (req, res, next) => {
   req.query.limit = 5;
@@ -42,10 +42,12 @@ const getTour = catchAsync(async (req, res, next) => {
   const tour = await Tour.findById(req.params.id);
 
   if (!tour) {
-    next(new ApiError({
-      message: 'No tour find with that ID',
-      statusCode: 404,
-    }));
+    next(
+      new ApiError({
+        message: 'No tour find with that ID',
+        statusCode: 404,
+      }),
+    );
     return;
   }
 
@@ -64,10 +66,12 @@ const updateTour = catchAsync(async (req, res) => {
   });
 
   if (!tour) {
-    next(new ApiError({
-      message: 'No tour find with that ID',
-      statusCode: 404,
-    }));
+    next(
+      new ApiError({
+        message: 'No tour find with that ID',
+        statusCode: 404,
+      }),
+    );
     return;
   }
 
@@ -83,10 +87,12 @@ const deleteTour = catchAsync(async (req, res, next) => {
   const tour = await Tour.findByIdAndDelete(req.params.id);
 
   if (!tour) {
-    next(new ApiError({
-      message: 'No tour find with that ID',
-      statusCode: 404,
-    }));
+    next(
+      new ApiError({
+        message: 'No tour find with that ID',
+        statusCode: 404,
+      }),
+    );
     return;
   }
 
