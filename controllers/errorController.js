@@ -31,6 +31,18 @@ const handleDuplicateFieldsErrorDB = (err) => {
   });
 };
 
+const handleJWTError = () =>
+  new ApiError({
+    message: 'Invalid token. Please login again',
+    statusCode: 401,
+  });
+
+const handleJWTExpiredError = () =>
+  new ApiError({
+    message: 'The token has expired. Login again',
+    statusCode: 401,
+  });
+
 const sendProductionError = (err, res) => {
   if (!err.isOperational) {
     res.status(500).json({
@@ -38,10 +50,10 @@ const sendProductionError = (err, res) => {
       message: 'Something went wrong',
     });
 
+    console.error('ERROR >> ', err);
+
     return;
   }
-
-  console.error('ERROR >> ', err);
 
   res.status(err.statusCode).json({
     status: err.status,
@@ -72,6 +84,14 @@ const globalErrorHandler = (err, req, res, next) => {
 
     if (err.name === 'ValidationError') {
       productionError = handleValidationErrorDB(productionError);
+    }
+
+    if (err.name === 'JsonWebTokenError') {
+      productionError = handleJWTError(err);
+    }
+
+    if (err.name === 'TokenExpiredError') {
+      productionError = handleJWTExpiredError(err);
     }
 
     sendProductionError(productionError, res);

@@ -15,7 +15,7 @@ const userSchema = new Schema({
   email: {
     type: String,
     trim: true,
-    uniq: true,
+    unique: true,
     lowercase: true,
     required: [true, 'User email is required'],
     validate: [validator.isEmail, 'User email is not valid!'],
@@ -42,12 +42,26 @@ const userSchema = new Schema({
       message: 'Password fields should be the same',
     },
   },
+  passwordChangedAt: Date,
 });
 
 userSchema.methods.isPasswordCorrect = async (
   candidatePassword,
   userPassword,
 ) => await bcrypt.compare(candidatePassword, userPassword);
+
+userSchema.methods.isPasswordChangedAfter = function (jwtTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimeStamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10,
+    );
+
+    return jwtTimestamp < changedTimeStamp;
+  }
+
+  return false;
+};
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
