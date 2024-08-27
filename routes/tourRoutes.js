@@ -24,6 +24,14 @@ toursRouter
   .route('/')
   .get(authController.protect, getAllTours)
   .post(createTour);
-toursRouter.route('/:id').get(getTour).patch(updateTour).delete(deleteTour);
+toursRouter
+  .route('/:id')
+  .get(getTour)
+  .patch(updateTour)
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin', 'lead-guide'),
+    deleteTour,
+  );
 
 module.exports = toursRouter;

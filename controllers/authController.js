@@ -8,6 +8,17 @@ const signToken = (id) =>
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
+const getTokenFromRequest = (req) => {
+  const { authorization } = req.headers;
+
+  return authorization?.startsWith('Bearer')
+    ? authorization?.split?.(' ')?.[1]
+    : null;
+};
+
+const decodeToken = async (token) =>
+  promisify(jwt.verify)(token, process.env.JWT_SECRET);
+
 const signup = catchAsync(async (req, res, next) => {
   const user = await User.create({
     name: req.body.name,
@@ -15,6 +26,7 @@ const signup = catchAsync(async (req, res, next) => {
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
     passwordChangedAt: req.body.passwordChangedAt,
+    role: req.body.role,
   });
 
   const token = signToken(user._id);
@@ -78,17 +90,14 @@ const getAllUsers = catchAsync(async (req, res, next) => {
 
 const protect = catchAsync(async (req, res, next) => {
   // 1) Getting token and check of it's included
-  const { authorization } = req.headers;
-
-  const token =
-    authorization?.startsWith('Bearer') && authorization?.split?.(' ')?.[1];
+  const token = getTokenFromRequest(req);
 
   if (!token) {
     next(new ApiError({ message: 'User is not authorized', statusCode: 401 }));
     return;
   }
   // 2) Verify token
-  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  const decoded = await decodeToken(token);
 
   // 3) Check if user still exists
   const currentUser = await User.findById(decoded.id);
@@ -119,9 +128,33 @@ const protect = catchAsync(async (req, res, next) => {
   next();
 });
 
+const restrictTo = (...roles) =>
+  catchAsync(async (req, res, next) => {
+    // const token = getTokenFromRequest(req);
+    //
+    // const { id } = await decodeToken(token);
+    //
+    // const user = await User.findById(id);
+
+    const { role } = req.user;
+
+    if (!roles.includes(role)) {
+      next(
+        new ApiError({
+          message: 'User has no permission to perform this action',
+          statusCode: 403,
+        }),
+      );
+      return;
+    }
+
+    next();
+  });
+
 module.exports = {
   signup,
   login,
   getAllUsers,
   protect,
+  restrictTo,
 };

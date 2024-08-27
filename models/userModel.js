@@ -43,6 +43,11 @@ const userSchema = new Schema({
     },
   },
   passwordChangedAt: Date,
+  role: {
+    type: String,
+    enum: ['user', 'guide', 'lead-guide', 'admin'],
+    default: 'user',
+  },
 });
 
 userSchema.methods.isPasswordCorrect = async (
