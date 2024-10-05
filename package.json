@@ -11,6 +11,7 @@
     "fill-db": "node ./dev-data/data/import-dev-data.js --import",
     "refresh-db": "npm run clear-db && npm run fill-db",
     "debug": "ndb server.js",
+    "lint": "eslint ./*.js",
     "lint:fix": "eslint --fix ./*.js"
   },
   "author": "Me",

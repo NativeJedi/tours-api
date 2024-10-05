@@ -14,9 +14,7 @@ const { PORT, DATABASE, DATABASE_PASSWORD } = process.env;
 
 const CONNECTION = DATABASE.replace('<PASSWORD>', DATABASE_PASSWORD);
 
-mongoose
-  .connect(CONNECTION)
-  .then(({ connections }) => console.log('DB connection success!'));
+mongoose.connect(CONNECTION).then(() => console.log('DB connection success!'));
 
 const server = app.listen(PORT, () => {
   console.log(`App port is ${PORT}`);

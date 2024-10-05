@@ -17,7 +17,7 @@ app.all('*', (req, res, next) => {
   const error = new ApiError({
     statusCode: 404,
     message: `Can't find ${req.originalUrl} on this server`,
-  })
+  });
 
   next(error);
 });
