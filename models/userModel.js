@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const { Schema } = mongoose;
 
@@ -48,6 +49,14 @@ const userSchema = new Schema({
     enum: ['user', 'guide', 'lead-guide', 'admin'],
     default: 'user',
   },
+  passwordResetToken: {
+    type: String,
+    required: false,
+  },
+  passwordResetExpires: {
+    type: String,
+    required: false,
+  },
 });
 
 userSchema.methods.isPasswordCorrect = async (
@@ -68,12 +77,39 @@ userSchema.methods.isPasswordChangedAfter = function (jwtTimestamp) {
   return false;
 };
 
+// userSchema.methods.isResetTokenExpired = () => {
+//   if (!this.passwordResetExpires) return false;
+//
+//   return Date.now() > this.passwordResetExpires;
+// };
+
+userSchema.methods.createResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
+};
+
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
   this.password = await bcrypt.hash(this.password, 12);
 
   this.passwordConfirm = undefined;
+
+  next();
+});
+
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password') || this.isNew()) return next();
+
+  this.passwordChangedAt = Date.now() - 1000;
 
   next();
 });
