@@ -21,7 +21,19 @@ const getTokenFromRequest = (req) => {
 const decodeToken = async (token) =>
   promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-const signup = catchAsync(async (req, res, next) => {
+const createTokenAndSend = (res, statusCode, user) => {
+  const token = signToken(user._id);
+
+  res.status(statusCode).json({
+    status: 'success',
+    data: {
+      token,
+      user,
+    },
+  });
+};
+
+const signup = catchAsync(async (req, res) => {
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
@@ -31,15 +43,7 @@ const signup = catchAsync(async (req, res, next) => {
     role: req.body.role,
   });
 
-  const token = signToken(user._id);
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      token,
-      user,
-    },
-  });
+  createTokenAndSend(res, 201, user);
 });
 
 const login = catchAsync(async (req, res, next) => {
@@ -68,14 +72,7 @@ const login = catchAsync(async (req, res, next) => {
     return;
   }
 
-  const token = signToken(user._id);
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      token,
-    },
-  });
+  createTokenAndSend(res, 200, user);
 });
 
 const getAllUsers = catchAsync(async (req, res, next) => {
@@ -94,10 +91,11 @@ const protect = catchAsync(async (req, res, next) => {
   // 1) Getting token and check of it's included
   const token = getTokenFromRequest(req);
 
-  if (!token) {
+  if (!token || token === 'null') {
     next(new ApiError({ message: 'User is not authorized', statusCode: 401 }));
     return;
   }
+
   // 2) Verify token
   const decoded = await decodeToken(token);
 
@@ -132,12 +130,6 @@ const protect = catchAsync(async (req, res, next) => {
 
 const restrictTo = (...roles) =>
   catchAsync(async (req, res, next) => {
-    // const token = getTokenFromRequest(req);
-    //
-    // const { id } = await decodeToken(token);
-    //
-    // const user = await User.findById(id);
-
     const { role } = req.user;
 
     if (!roles.includes(role)) {
@@ -229,11 +221,56 @@ const resetPassword = catchAsync(async (req, res, next) => {
   await user.save();
 
   // 4) Log user in and send back JWT token
-  const token = await signToken(user.id);
+  createTokenAndSend(res, 200, user);
+});
+
+const updateMyPassword = catchAsync(async (req, res, next) => {
+  const {
+    body: { currentPassword, password, passwordConfirm },
+  } = req;
+
+  const user = await User.findById(req.user.id).select('+password');
+
+  const isPasswordCorrect = await user.isPasswordCorrect(
+    currentPassword,
+    user.password,
+  );
+
+  if (!isPasswordCorrect) {
+    next(new ApiError({ message: 'Incorrect password', statusCode: 401 }));
+
+    return;
+  }
+
+  user.password = password;
+  user.passwordConfirm = passwordConfirm;
+
+  await user.save();
+
+  createTokenAndSend(res, 200, user);
+});
+
+const updateMe = catchAsync(async (req, res) => {
+  const { name, email } = req.body;
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { name, email },
+    { runValidators: true, new: true },
+  );
 
   res.status(200).json({
-    data: { token },
     status: 'success',
+    data: { user },
+  });
+});
+
+const deleteMe = catchAsync(async (req, res) => {
+  await User.findByIdAndUpdate(req.user.id, { active: false });
+
+  res.status(204).json({
+    status: 'success',
+    data: null,
   });
 });
 
@@ -245,4 +282,7 @@ module.exports = {
   restrictTo,
   resetPassword,
   forgotPassword,
+  updateMyPassword,
+  updateMe,
+  deleteMe,
 };
