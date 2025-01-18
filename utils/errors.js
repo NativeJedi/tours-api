@@ -9,9 +9,29 @@ class ApiError extends Error {
   }
 }
 
+class LockedAccountError extends ApiError {
+  constructor() {
+    super({
+      message: 'Your account has been locked. Please, try again later',
+      statusCode: 403,
+    });
+  }
+}
+
+class InvalidCredentialsError extends ApiError {
+  constructor() {
+    super({
+      message: 'Invalid email or password',
+      statusCode: 401,
+    });
+  }
+}
+
 const catchAsync = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 module.exports = {
   ApiError,
   catchAsync,
+  LockedAccountError,
+  InvalidCredentialsError,
 };

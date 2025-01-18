@@ -2,7 +2,12 @@ const jwt = require('jsonwebtoken');
 const { promisify } = require('util');
 const crypto = require('crypto');
 const User = require('../models/userModel');
-const { catchAsync, ApiError } = require('../utils/errors');
+const {
+  catchAsync,
+  ApiError,
+  LockedAccountError,
+  InvalidCredentialsError,
+} = require('../utils/errors');
 const { sendEmail } = require('../utils/email');
 
 const signToken = (id) =>
@@ -64,13 +69,29 @@ const login = catchAsync(async (req, res, next) => {
   // 2) Check if user exists && password is correct
   const user = await User.findOne({ email }).select('+password');
 
-  if (!user || !(await user.isPasswordCorrect(password, user.password))) {
-    next(
-      new ApiError({ message: 'Incorrect email or password', statusCode: 401 }),
-    );
+  const sendInvalidCredentialsError = () => next(new InvalidCredentialsError());
+
+  if (!user) {
+    sendInvalidCredentialsError();
 
     return;
   }
+
+  if (user.isAccountLocked()) {
+    next(new LockedAccountError());
+
+    return;
+  }
+
+  if (!(await user.isPasswordCorrect(password, user.password))) {
+    await user.increaseLoginAttempts();
+
+    sendInvalidCredentialsError();
+
+    return;
+  }
+
+  await user.resetLoginAttempts();
 
   createTokenAndSend(res, 200, user);
 });
@@ -112,6 +133,13 @@ const protect = catchAsync(async (req, res, next) => {
     );
     return;
   }
+
+  if (currentUser.isAccountLocked()) {
+    next(new LockedAccountError());
+
+    return;
+  }
+
   // 4) Check if user changed password after the token was issued
   if (currentUser.isPasswordChangedAfter(decoded.iat)) {
     next(
@@ -151,6 +179,12 @@ const forgotPassword = catchAsync(async (req, res, next) => {
 
   if (!user) {
     next(new ApiError({ message: 'User is not exists', statusCode: 404 }));
+    return;
+  }
+
+  if (user.isAccountLocked()) {
+    next(new LockedAccountError());
+
     return;
   }
 

@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const {
+  RESET_TOKEN_EXPIRATION_TIME,
+  ACCOUNT_LOGIN_ATTEMPTS,
+  ACCOUNT_LOCK_TIME,
+} = require('../constants');
 
 const { Schema } = mongoose;
 
@@ -62,6 +67,13 @@ const userSchema = new Schema({
     default: true,
     select: false,
   },
+  failedLoginAttempts: {
+    type: Number,
+    default: 0,
+  },
+  lockUntil: {
+    type: Date,
+  },
 });
 
 userSchema.methods.isPasswordCorrect = async (
@@ -88,6 +100,27 @@ userSchema.methods.isPasswordChangedAfter = function (jwtTimestamp) {
 //   return Date.now() > this.passwordResetExpires;
 // };
 
+userSchema.methods.isAccountLocked = function () {
+  return Boolean(this.lockUntil && this.lockUntil > Date.now());
+};
+
+userSchema.methods.increaseLoginAttempts = async function () {
+  this.failedLoginAttempts += 1;
+
+  if (this.failedLoginAttempts >= ACCOUNT_LOGIN_ATTEMPTS) {
+    this.lockUntil = Date.now() + ACCOUNT_LOCK_TIME;
+  }
+
+  await this.save({ validateBeforeSave: false });
+};
+
+userSchema.methods.resetLoginAttempts = async function () {
+  this.failedLoginAttempts = 0;
+  this.lockUntil = undefined;
+
+  await this.save({ validateBeforeSave: false });
+};
+
 userSchema.methods.createResetToken = function () {
   const resetToken = crypto.randomBytes(32).toString('hex');
 
@@ -96,7 +129,7 @@ userSchema.methods.createResetToken = function () {
     .update(resetToken)
     .digest('hex');
 
-  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+  this.passwordResetExpires = Date.now() + RESET_TOKEN_EXPIRATION_TIME;
 
   return resetToken;
 };
