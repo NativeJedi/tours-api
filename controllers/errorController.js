@@ -72,7 +72,7 @@ const sendDevelopmentError = (err, res) => {
 
 const globalErrorHandler = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
-    let productionError = { ...err };
+    let productionError = { ...err, message: err.message };
 
     if (err.name === 'CastError') {
       productionError = handleCastErrorDB(productionError);
